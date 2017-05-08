@@ -33,3 +33,13 @@ You just need to prepend "CODE_".
 
 ## Known-Issues
 If you learn the same signal multiple times the code can be different everytime. This can not be changed.
+
+
+## Changelog
+### 0.2.0 (2017-05-08)
+* (bluefox) add connected state
+* (bluefox) add browse
+
+##License
+
+Copyright (c) 2017 Reinhard Hiebl <reinhard@hieblmedia.com>

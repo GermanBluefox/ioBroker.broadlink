@@ -1,24 +1,24 @@
 <html>
+<head>
 <link rel="stylesheet" type="text/css" href="../../lib/css/themes/jquery-ui/redmond/jquery-ui.min.css" />
 <script type="text/javascript" src="../../lib/js/jquery-1.11.1.min.js"></script>
 <script type="text/javascript" src="../../socket.io/socket.io.js"></script>
 <script type="text/javascript" src="../../lib/js/jquery-ui-1.10.3.full.min.js"></script>
 <link rel="stylesheet" type="text/css" href="../../css/adapter.css" />
 <script type="text/javascript" src="../../js/translate.js"></script>
+<script type="text/javascript" src="words.js"></script>
 <script type="text/javascript" src="../../js/adapter-settings.js"></script>
+
 <script type="text/javascript">
-	systemDictionary = {
-		"Broadlink adapter settings": {"de": "Broadlink Adaber Einstellungen"},
-		"Settings": {"de": "Einstellungen"},
-		"IP-Address": {"de": "IP-Adresse"},
-		"On save adapter restarts with new config immediately": {
-			"de": "Beim Speichern von Einstellungen wird der Adapter sofort neu gestartet."
-		}
-	};
 	function load(settings, onChange) {
+		if (settings.learningPeriod === undefined) settings.learningPeriod = 30000;
+
 		for (var key in settings) {
+			if (!settings.hasOwnProperty(key)) {
+				continue;
+			}
 			var $el = $('#' + key + '.value');
-			if ($el.attr('type') == 'checkbox') {
+			if ($el.attr('type') === 'checkbox') {
 				$el.prop('checked', settings[key]).change(function () {
 					onChange();
 				});
@@ -30,6 +30,46 @@
 				});
 			}
 		}
+		getIsAdapterAlive(function (isAlive) {
+			if (isAlive || common.enabled) {
+				$('#browse').prop('disabled', false);
+			}
+		});
+		$('#browse').click(function () {
+			$('#browse').prop('disabled', true);
+			$('#ips').hide();
+			sendTo(null, 'browse', null, function(list) {
+				if (interval) {
+					clearInterval(interval);
+					interval = null;
+				}
+				$('#browse').prop('disabled', false).html(_('Browse'));
+				var text = list && list.length ? '<option value="">' + _('Select IP') + '</option>' : '<option value="">' + _('Nothing found') + '</option>';
+
+				for (var j = 0; j < list.length; j++) {
+					text += '<option value="' + list[j].ip + '">' + list[j].ip + '(' + list[j].type + ')';
+				}
+				$('#ips').html(text).show();
+			});
+			var count = 5;
+			var interval = setInterval(function () {
+				count--;
+				if (!count && interval) {
+					clearInterval(interval);
+					interval = null;
+				} else {
+					$('#browse').html(_('Browse') + '... ' + count);
+				}
+			}, 1000);
+		}).prop('disabled', true).html(_('Browse'));
+
+		$('#ips').change(function () {
+			var val = $(this).val();
+			if (val) {
+				$('#ip').val(val).trigger('change');
+			}
+		});
+
 		// Signal to admin, that no changes yet
 		onChange(false);
 	}
@@ -37,7 +77,11 @@
 		var obj = {};
 		$('.value').each(function () {
 			var $this = $(this);
-			obj[$this.attr('id')] = $this.val();
+			if ($this.attr('type') === 'checkbox') {
+				obj[$this.attr('id')] = $this.prop('checked');
+			} else {
+				obj[$this.attr('id')] = $this.val();
+			}
 		});
 		callback(obj);
 	}
@@ -60,7 +104,7 @@
 		font-size: 11px;
 		color: #505050;
 		font-weight: bold;
-		width: 100%;
+		width: calc(100% - 20px);
 		padding-left: 6px;
 		padding-right: 5px;
 		padding-top: 5px;
@@ -68,7 +112,8 @@
 		background-color: #e0e0e0;
 	}
 </style>
-
+</head>
+<body>
 <div id="adapter-container">
 	<table>
 		<tr>
@@ -78,15 +123,10 @@
 	</table>
 
 	<h1 class="translate">Settings</h1>
-	<p>
-		<span class="translate">IP-Address</span> <input class="value" id="ip" /><br>
-	</p>
-
 	<table>
-		<tr>
-			<td class="translate">On save adapter restarts with new config immediately</td>
-		</tr>
+		<tr><td><label class="translate" for="ip">IP-Address</label></td><td class="admin-icon"></td><td><input class="value" id="ip" /></td><td><button id="browse" disabled></button><select style="display: none" id="ips"></select></td></tr>
+		<tr><td><label class="translate" for="learningPeriod">Learning duration</label></td><td class="admin-icon"></td><td><input class="value" id="learningPeriod" /></td><td></td></tr>
 	</table>
 </div>
-
+</body>
 </html>
